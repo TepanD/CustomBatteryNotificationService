@@ -1,6 +1,12 @@
 ﻿# Custom Windows Battery Notifcation Service
 
-Custom made windows service. Provides notification for low battery and fully charged. Provides logging to Windows Event Log.
+Custom made windows service. Provides a notification for low battery and fully charged (notify at 94%). Provides logging to Windows Event Log.
+my inspo: nowhere, no one, just a pure frustration of wanting a notification for fully charged battery 🫠. Hence this quick custom notification service.
+
+## Some Details
+
+👉 .Net Framework 4.8
+👉 C# lang version 10
 
 ## Steps to install the servie
 
