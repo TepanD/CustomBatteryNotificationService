@@ -6,6 +6,7 @@ my inspo: nowhere, no one, just a pure frustration of wanting a notification for
 ## Some Details
 
 👉 .Net Framework 4.8
+
 👉 C# lang version 10
 
 ## Steps to install the servie
