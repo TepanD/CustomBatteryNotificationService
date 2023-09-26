@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.ServiceProcess;
 using System.Speech.Synthesis;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace BatteryNotificationService
 {
@@ -72,20 +73,23 @@ namespace BatteryNotificationService
             eventLog1.WriteEntry("service stopped.");
         }
 
-        public void CheckBatteryStatus(object sender)
+        public async void CheckBatteryStatus(object sender)
         {
             ManagementClass systemBatteryInstance = new("Win32_Battery");
             ManagementObjectCollection systemBatteryProperties = systemBatteryInstance.GetInstances();
             (string, string) battery = ("", ""); //batteryPercentage, batteryStatus
 
-            foreach (ManagementObject p in systemBatteryProperties)
+            await Task.Run(() =>
             {
-                battery.Item1 = p.GetPropertyValue("EstimatedChargeRemaining").ToString();
-                battery.Item2 = p.GetPropertyValue("BatteryStatus").ToString();
-                //BatteryStatus = 2 == charging
-                //BatteryStatus = 1 == standby
-            }
-
+                foreach (ManagementObject p in systemBatteryProperties)
+                {
+                    battery.Item1 = p.GetPropertyValue("EstimatedChargeRemaining").ToString();
+                    battery.Item2 = p.GetPropertyValue("BatteryStatus").ToString();
+                    //BatteryStatus = 2 == charging
+                    //BatteryStatus = 1 == standby
+                }
+            });
+            
             int.TryParse(battery.Item1, out int batteryPercentage);
 
             if (battery.Item2 is "2") _isCharging = true;
@@ -99,31 +103,31 @@ namespace BatteryNotificationService
 
             if (!_isCharging)
             {
-                eventLog1.WriteEntry($"Laptop battery is {(battery.Item2 is not "2" ? "ON STANDBY" : "CHARGING")} with {battery.Item1}% remaining.", EventLogEntryType.Information, _eventId++);
                 _batteryChargingLogged = false;
+                eventLog1.WriteEntry($"Laptop battery is {(battery.Item2 is not "2" ? "ON STANDBY" : "CHARGING")} with {battery.Item1}% remaining.", EventLogEntryType.Information, _eventId++);
             }
             else if (_isCharging && !_batteryChargingLogged)
             {
-                eventLog1.WriteEntry($"Laptop battery is CHARGING with {battery.Item1}% remaining.", EventLogEntryType.Information, _eventId++);
                 _batteryChargingLogged = true;
+                eventLog1.WriteEntry($"Laptop battery is CHARGING with {battery.Item1}% remaining.", EventLogEntryType.Information, _eventId++);
             }
 
             if ( !_isCharging) //is not charging and low battery
             {
                 if (batteryPercentage <= 40 && !_lowBatteryMessageSent)
                 {
+                    _lowBatteryMessageSent = true;
                     eventLog1.WriteEntry($"Low battery, {battery.Item1}% remaining. Please charge.", EventLogEntryType.Information, _eventId++);
                     RunPowerShellMsg($"Low battery, please plug in your charger.");
                     PlaySystemBeepSound();
-                    _lowBatteryMessageSent = true;
                 }
                 else // is not charging and above 40 percent
                 {
                     _fullyChargedMessageSent = false;
                     if (_timerInChargingState)
                     {
-                        _stateTImer.Change(_secondsOnStandby, _secondsOnStandby);
                         _timerInChargingState = false;
+                        _stateTImer.Change(_secondsOnStandby, _secondsOnStandby);
                     }
                 }
             }
@@ -132,14 +136,14 @@ namespace BatteryNotificationService
             {
                 if (!_timerInChargingState)
                 {
-                    _stateTImer.Change(_secondsCharging, _secondsCharging);
                     _timerInChargingState = true;
+                    _stateTImer.Change(_secondsCharging, _secondsCharging);
                 }
                 if (batteryPercentage == 94 && !_fullyChargedMessageSent)//is charging and fully charged
                 {
+                    _fullyChargedMessageSent = true;
                     RunPowerShellMsg("Your laptop battery is fully charged. Please unplug your charger.");
                     RunTextToSpeech("Battery Fully Charged");
-                    _fullyChargedMessageSent = true;
                 }
             }
         }
